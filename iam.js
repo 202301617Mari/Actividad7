@@ -40,5 +40,23 @@ function verificarToken(token) {
         return null;
     }
 }
+function generarUsuarioTemporal() {
+    const numero = Math.floor(Math.random() * 1000);
 
-module.exports = { registrar, login, verificarToken };
+    const nombre = `Usuario_${numero}`;
+
+    const existente = db.buscarUsuario(nombre);
+
+    if (existente) {
+        return generarUsuarioTemporal();
+    }
+
+    return db.crearUsuario(nombre, null, true);
+}
+
+module.exports = {
+    registrar,
+    login,
+    verificarToken,
+    generarUsuarioTemporal
+};
