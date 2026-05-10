@@ -1,5 +1,4 @@
 node_modules/
-server/chat.db
 *.db
 .DS_Store
 .env
