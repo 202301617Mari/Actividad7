@@ -5,6 +5,7 @@ const enterBtn = document.getElementById('enterBtn');
 const nameInput = document.getElementById('nameInput');
 const loginContainer = document.getElementById('loginContainer');
 const chatContainer = document.getElementById('chatContainer');
+const connectionStatus = document.getElementById('connectionStatus');
 
 let socket;
 let usuario;
