@@ -9,6 +9,8 @@ const iam = require("./iam");
 const app = express();
 const server = http.createServer(app);
 
+app.use(express.static("public"));
+
 const PUERTO = 4000;
 
 const wss = new WebSocket.Server({ server });
@@ -88,5 +90,4 @@ const nombreUsuario = usuario.nombre;
 
 server.listen(PUERTO, () => {
     console.log(`Servidor iniciado en http://localhost:${PUERTO}`);
-    console.log(`WebSocket activo en ws://localhost:${PUERTO}`);
 });
