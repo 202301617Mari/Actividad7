@@ -7,7 +7,16 @@
 </head>
 <body>
 
-  <div class="chat-container">
+  <div class="login-container" id="loginContainer">
+    <div class="login-box">
+      <h2>Chat Colaborativo</h2>
+      <p>¿Cómo te llamas?</p>
+      <input type="text" id="nameInput" placeholder="Ingrese su nombre..." maxlength="20">
+      <button id="enterBtn">Entrar al chat</button>
+    </div>
+  </div>
+
+  <div class="chat-container" id="chatContainer" style="display:none;">
     <h1>Chat Colaborativo</h1>
 
     <div id="messages"></div>

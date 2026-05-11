@@ -1,59 +1,71 @@
 const messages = document.getElementById('messages');
 const input = document.getElementById('messageInput');
 const button = document.getElementById('sendBtn');
+const enterBtn = document.getElementById('enterBtn');
+const nameInput = document.getElementById('nameInput');
+const loginContainer = document.getElementById('loginContainer');
+const chatContainer = document.getElementById('chatContainer');
 
-// nombre temporal automático
-const usuario = "Usuario_" + Math.floor(Math.random() * 1000);
+let socket;
+let usuario;
 
-// conexión websocket
-const socket = new WebSocket(`ws://localhost:4000?usuario=${usuario}`);
-
-// recibir mensajes
-socket.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-
-    const messageElement = document.createElement('div');
-
-    // estilos según tipo
-    if (data.tipo === 'mensaje') {
-        messageElement.classList.add('message');
-
-        messageElement.innerHTML = `
-            <strong>${data.usuario}</strong>: ${data.mensaje}
-            <small>(${data.hora})</small>
-        `;
+function entrarAlChat() {
+    const nombre = nameInput.value.trim();
+    if (nombre === '') {
+        nameInput.placeholder = 'El nombre no puede estar vacío';
+        return;
     }
 
-    if (data.tipo === 'notificacion') {
-        messageElement.classList.add('notification');
+    usuario = nombre;
+    loginContainer.style.display = 'none';
+    chatContainer.style.display = 'block';
 
-        messageElement.innerHTML = `
-            <em>${data.mensaje}</em>
-        `;
-    }
+    // Conectar WebSocket con el nombre real
+    socket = new WebSocket(`ws://localhost:4000?usuario=${encodeURIComponent(usuario)}`);
 
-    messages.appendChild(messageElement);
+    socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        const el = document.createElement('div');
 
-    // scroll automático
-    messages.scrollTop = messages.scrollHeight;
-};
+        if (data.tipo === 'mensaje') {
+            el.classList.add('message');
+            el.innerHTML = `<strong>${data.usuario}</strong>: ${data.mensaje} <small>(${data.hora})</small>`;
+        }
 
-// enviar mensajes
+        if (data.tipo === 'notificacion') {
+            el.classList.add('notification');
+            el.innerHTML = `<em>${data.mensaje}</em>`;
+        }
+
+        if (data.tipo === 'historial') {
+            data.mensajes.forEach(m => {
+                const h = document.createElement('div');
+                h.classList.add('message');
+                h.innerHTML = `<strong>${m.usuario}</strong>: ${m.mensaje} <small>(${m.hora})</small>`;
+                messages.appendChild(h);
+            });
+            return;
+        }
+
+        messages.appendChild(el);
+        messages.scrollTop = messages.scrollHeight;
+    };
+}
+
+enterBtn.addEventListener('click', entrarAlChat);
+nameInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') entrarAlChat();
+});
+
 function enviarMensaje() {
     const mensaje = input.value;
-
-    if (mensaje.trim() !== '') {
+    if (mensaje.trim() !== '' && socket && socket.readyState === WebSocket.OPEN) {
         socket.send(mensaje);
         input.value = '';
     }
 }
 
-// botón enviar
 button.addEventListener('click', enviarMensaje);
-
-// enviar con ENTER
 input.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        enviarMensaje();
-    }
+    if (e.key === 'Enter') enviarMensaje();
 });
