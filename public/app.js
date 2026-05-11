@@ -20,8 +20,22 @@ function entrarAlChat() {
     loginContainer.style.display = 'none';
     chatContainer.style.display = 'block';
 
-    // Conectar WebSocket con el nombre real
     socket = new WebSocket(`ws://localhost:4000?usuario=${encodeURIComponent(usuario)}`);
+
+    socket.onopen = () => {
+        connectionStatus.textContent = '🟢 Conectado';
+        connectionStatus.className = 'status-dot connected';
+    };
+
+    socket.onclose = () => {
+        connectionStatus.textContent = '🔴 Desconectado';
+        connectionStatus.className = 'status-dot disconnected';
+    };
+
+    socket.onerror = () => {
+        connectionStatus.textContent = '🔴 Error de conexión';
+        connectionStatus.className = 'status-dot disconnected';
+    };
 
     socket.onmessage = (event) => {
         const data = JSON.parse(event.data);

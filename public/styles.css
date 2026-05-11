@@ -137,3 +137,22 @@ button:hover { background: #2563eb; }
     margin: 4px auto;
     max-width: 90%;
 }
+
+.chat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.chat-header h1 { margin: 0; font-size: 1.2rem; }
+
+.status-dot {
+    font-size: 0.8rem;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #0f172a;
+}
+
+.status-dot.connected   { color: #4ade80; }
+.status-dot.disconnected { color: #f87171; }
