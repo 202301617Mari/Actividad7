@@ -3,6 +3,9 @@ const http = require("http");
 const WebSocket = require("ws");
 const url = require("url");
 
+const db = require("./db");
+const iam = require("./iam");
+
 const app = express();
 const server = http.createServer(app);
 
@@ -22,9 +25,32 @@ function enviarATodos(datos) {
 wss.on("connection", (ws, req) => {
     const parametros = url.parse(req.url, true).query;
 
-    const nombreUsuario = parametros.usuario || "Usuario sin identificar";
+    let usuario;
+
+    if (parametros.token) {
+        const datos = iam.verificarToken(parametros.token);
+
+        if (datos) {
+            usuario = {
+             id: datos.id,
+             nombre: datos.nombre
+         };
+        }
+    }
+
+if (!usuario) {
+    usuario = iam.generarUsuarioTemporal();
+}
+
+const nombreUsuario = usuario.nombre;
 
     console.log(`${nombreUsuario} se conectó al chat`);
+        const historial = db.obtenerHistorial();
+
+            ws.send(JSON.stringify({
+                tipo: "historial",
+                mensajes: historial
+            }));
 
     enviarATodos({
         tipo: "notificacion",
@@ -34,6 +60,8 @@ wss.on("connection", (ws, req) => {
     ws.on("message", (data) => {
         const texto = data.toString();
 
+        db.guardarMensaje(usuario.id, texto);
+        
         console.log(`${nombreUsuario}: ${texto}`);
 
         enviarATodos({
