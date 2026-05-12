@@ -6,22 +6,41 @@ const nameInput = document.getElementById('nameInput');
 const loginContainer = document.getElementById('loginContainer');
 const chatContainer = document.getElementById('chatContainer');
 const connectionStatus = document.getElementById('connectionStatus');
+const errorMsg = document.getElementById('errorMsg');
 
 let socket;
-let usuario;
+
+function mostrarMensaje(data) {
+    const el = document.createElement('div');
+
+    if (data.tipo === 'mensaje') {
+        el.classList.add('message');
+        const texto = data.mensaje || data.texto || '';
+        const hora = data.hora || '';
+        el.innerHTML = `<strong>${data.usuario}</strong>: ${texto} <small>(${hora})</small>`;
+    }
+
+    if (data.tipo === 'notificacion') {
+        el.classList.add('notification');
+        el.innerHTML = `<em>${data.mensaje}</em>`;
+    }
+
+    messages.appendChild(el);
+    messages.scrollTop = messages.scrollHeight;
+}
 
 function entrarAlChat() {
     const nombre = nameInput.value.trim();
-    if (nombre === '') {
-        nameInput.placeholder = 'El nombre no puede estar vacío';
-        return;
-    }
+    errorMsg.textContent = ''; // limpiar error previo
 
-    usuario = nombre;
     loginContainer.style.display = 'none';
     chatContainer.style.display = 'block';
 
-    socket = new WebSocket(`ws://localhost:4000?usuario=${encodeURIComponent(usuario)}`);
+    const wsUrl = nombre !== ''
+        ? `ws://localhost:4000?usuario=${encodeURIComponent(nombre)}`
+        : `ws://localhost:4000`;
+
+    socket = new WebSocket(wsUrl);
 
     socket.onopen = () => {
         connectionStatus.textContent = '🟢 Conectado';
@@ -40,30 +59,21 @@ function entrarAlChat() {
 
     socket.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        const el = document.createElement('div');
 
-        if (data.tipo === 'mensaje') {
-            el.classList.add('message');
-            el.innerHTML = `<strong>${data.usuario}</strong>: ${data.mensaje} <small>(${data.hora})</small>`;
-        }
-
-        if (data.tipo === 'notificacion') {
-            el.classList.add('notification');
-            el.innerHTML = `<em>${data.mensaje}</em>`;
-        }
-
-        if (data.tipo === 'historial') {
-            data.mensajes.forEach(m => {
-                const h = document.createElement('div');
-                h.classList.add('message');
-                h.innerHTML = `<strong>${m.usuario}</strong>: ${m.mensaje} <small>(${m.hora})</small>`;
-                messages.appendChild(h);
-            });
+        // Nombre duplicado — volver al login con mensaje de error
+        if (data.tipo === 'error') {
+            chatContainer.style.display = 'none';
+            loginContainer.style.display = 'flex';
+            errorMsg.textContent = data.mensaje;
             return;
         }
 
-        messages.appendChild(el);
-        messages.scrollTop = messages.scrollHeight;
+        if (data.tipo === 'historial') {
+            data.mensajes.forEach(m => mostrarMensaje({ tipo: 'mensaje', ...m }));
+            return;
+        }
+
+        mostrarMensaje(data);
     };
 }
 
@@ -73,9 +83,9 @@ nameInput.addEventListener('keypress', (e) => {
 });
 
 function enviarMensaje() {
-    const mensaje = input.value;
-    if (mensaje.trim() !== '' && socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(mensaje);
+    const texto = input.value.trim();
+    if (texto !== '' && socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(texto);
         input.value = '';
     }
 }

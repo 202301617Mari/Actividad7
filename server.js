@@ -2,55 +2,60 @@ const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
 const url = require("url");
+const path = require("path");
 
 const db = require("./db");
-const iam = require("./iam");
 
 const app = express();
 const server = http.createServer(app);
 
-const PUERTO = 4000;
+app.use(express.static(path.join(__dirname, "public")));
 
 const wss = new WebSocket.Server({ server });
 
+const PUERTO = 4000;
+
+const nombresActivos = new Set();
+
 function enviarATodos(datos) {
     const mensaje = JSON.stringify(datos);
-
     wss.clients.forEach((cliente) => {
         if (cliente.readyState === WebSocket.OPEN) {
             cliente.send(mensaje);
         }
     });
 }
+
 wss.on("connection", (ws, req) => {
     const parametros = url.parse(req.url, true).query;
+    let nombreBase = (parametros.usuario || "").trim();
 
-    let usuario;
-
-    if (parametros.token) {
-        const datos = iam.verificarToken(parametros.token);
-
-        if (datos) {
-            usuario = {
-             id: datos.id,
-             nombre: datos.nombre
-         };
-        }
+    if (nombreBase === "") {
+        let temp;
+        do {
+            temp = "Caracolito_" + Math.floor(Math.random() * 1000);
+        } while (nombresActivos.has(temp));
+        nombreBase = temp;
     }
 
-if (!usuario) {
-    usuario = iam.generarUsuarioTemporal();
-}
+    if (nombresActivos.has(nombreBase)) {
+        ws.send(JSON.stringify({
+            tipo: "error",
+            mensaje: `El nombre "${nombreBase}" ya está en uso. Elige otro.`
+        }));
+        ws.close();
+        return;
+    }
 
-const nombreUsuario = usuario.nombre;
+    const nombreUsuario = nombreBase;
+    nombresActivos.add(nombreUsuario);
 
-    console.log(`${nombreUsuario} se conectó al chat`);
-        const historial = db.obtenerHistorial();
+    console.log(`${nombreUsuario} se conectó`);
 
-            ws.send(JSON.stringify({
-                tipo: "historial",
-                mensajes: historial
-            }));
+    ws.send(JSON.stringify({
+        tipo: "historial",
+        mensajes: db.obtenerHistorial()
+    }));
 
     enviarATodos({
         tipo: "notificacion",
@@ -59,10 +64,8 @@ const nombreUsuario = usuario.nombre;
 
     ws.on("message", (data) => {
         const texto = data.toString();
-
-        db.guardarMensaje(usuario.id, texto);
-        
         console.log(`${nombreUsuario}: ${texto}`);
+        db.guardarMensaje(nombreUsuario, texto);
 
         enviarATodos({
             tipo: "mensaje",
@@ -73,8 +76,8 @@ const nombreUsuario = usuario.nombre;
     });
 
     ws.on("close", () => {
-        console.log(`${nombreUsuario} se desconectó del chat`);
-
+        console.log(`${nombreUsuario} se desconectó`);
+        nombresActivos.delete(nombreUsuario); // liberar el nombre
         enviarATodos({
             tipo: "notificacion",
             mensaje: `${nombreUsuario} se desconectó del chat`
@@ -82,11 +85,10 @@ const nombreUsuario = usuario.nombre;
     });
 
     ws.on("error", (error) => {
-        console.log("Error en WebSocket:", error.message);
+        console.log("Error WebSocket:", error.message);
     });
 });
 
 server.listen(PUERTO, () => {
-    console.log(`Servidor iniciado en http://localhost:${PUERTO}`);
-    console.log(`WebSocket activo en ws://localhost:${PUERTO}`);
+    console.log(`Servidor en http://localhost:${PUERTO}`);
 });
