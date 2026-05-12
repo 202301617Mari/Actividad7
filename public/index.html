@@ -2,13 +2,46 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Chat Colaborativo</title>
+  <title>Sincrolitos</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-  <div class="chat-container">
-    <h1>Chat Colaborativo</h1>
+  <div class="login-container" id="loginContainer">
+    <div class="login-box">
+      <h2>Sincrolitos Chat</h2>
+
+      <p>Ingresa con Google o entra como invitado.</p>
+
+      <!-- Este enlace va directo a la ruta de Google -->
+      <a href="/auth/google" class="google-link">Iniciar sesión con Google</a>
+
+      <hr>
+
+      <p>
+        ¿Cómo te llamas?
+        <span style="color:#64748b;font-size:0.85rem;">(opcional)</span>
+      </p>
+
+      <input 
+        type="text" 
+        id="nameInput" 
+        placeholder="Ingrese su nombre o deje vacío..." 
+        maxlength="20"
+      >
+
+      <span id="errorMsg" class="error-msg"></span>
+
+      <button id="guestBtn">Entrar como invitado</button>
+    </div>
+  </div>
+
+  <div class="chat-container" id="chatContainer" style="display:none;">
+    <div class="chat-header">
+      <h1>Sincrolitos 💬</h1>
+      <span id="connectionStatus" class="status-dot disconnected">🔴 Desconectado</span>
+      <button id="logoutBtn" class="logout-btn">Salir</button>
+    </div>
 
     <div id="messages"></div>
 

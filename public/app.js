@@ -1,59 +1,162 @@
-const messages = document.getElementById('messages');
-const input = document.getElementById('messageInput');
-const button = document.getElementById('sendBtn');
+const messages = document.getElementById("messages");
+const input = document.getElementById("messageInput");
+const sendBtn = document.getElementById("sendBtn");
 
-// nombre temporal automático
-const usuario = "Usuario_" + Math.floor(Math.random() * 1000);
+const guestBtn = document.getElementById("guestBtn");
+const logoutBtn = document.getElementById("logoutBtn");
 
-// conexión websocket
-const socket = new WebSocket(`ws://localhost:4000?usuario=${usuario}`);
+const nameInput = document.getElementById("nameInput");
+const loginContainer = document.getElementById("loginContainer");
+const chatContainer = document.getElementById("chatContainer");
+const connectionStatus = document.getElementById("connectionStatus");
+const errorMsg = document.getElementById("errorMsg");
 
-// recibir mensajes
-socket.onmessage = (event) => {
-    const data = JSON.parse(event.data);
+let socket = null;
 
-    const messageElement = document.createElement('div');
+function mostrarMensaje(data) {
+    const el = document.createElement("div");
 
-    // estilos según tipo
-    if (data.tipo === 'mensaje') {
-        messageElement.classList.add('message');
+    if (data.tipo === "mensaje") {
+        el.classList.add("message");
 
-        messageElement.innerHTML = `
-            <strong>${data.usuario}</strong>: ${data.mensaje}
-            <small>(${data.hora})</small>
-        `;
+        const texto = data.mensaje || data.texto || "";
+        const hora = data.hora || "";
+
+        el.innerHTML = `<strong>${data.usuario}</strong>: ${texto} <small>(${hora})</small>`;
     }
 
-    if (data.tipo === 'notificacion') {
-        messageElement.classList.add('notification');
-
-        messageElement.innerHTML = `
-            <em>${data.mensaje}</em>
-        `;
+    if (data.tipo === "notificacion") {
+        el.classList.add("notification");
+        el.innerHTML = `<em>${data.mensaje}</em>`;
     }
 
-    messages.appendChild(messageElement);
-
-    // scroll automático
+    messages.appendChild(el);
     messages.scrollTop = messages.scrollHeight;
-};
+}
 
-// enviar mensajes
-function enviarMensaje() {
-    const mensaje = input.value;
+async function verificarSesionGoogle() {
+    try {
+        const respuesta = await fetch("/api/token");
 
-    if (mensaje.trim() !== '') {
-        socket.send(mensaje);
-        input.value = '';
+        if (!respuesta.ok) {
+            throw new Error("No hay sesión de Google");
+        }
+
+        const data = await respuesta.json();
+
+        loginContainer.style.display = "none";
+        chatContainer.style.display = "block";
+
+        conectarWebSocketConToken(data.token);
+
+    } catch (error) {
+        loginContainer.style.display = "flex";
+        chatContainer.style.display = "none";
     }
 }
 
-// botón enviar
-button.addEventListener('click', enviarMensaje);
+function entrarComoInvitado() {
+    const nombre = nameInput.value.trim();
 
-// enviar con ENTER
-input.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
+    errorMsg.textContent = "";
+
+    loginContainer.style.display = "none";
+    chatContainer.style.display = "block";
+
+    conectarWebSocketInvitado(nombre);
+}
+
+function conectarWebSocketConToken(token) {
+    const protocolo = window.location.protocol === "https:" ? "wss" : "ws";
+    const wsUrl = `${protocolo}://${window.location.host}?token=${encodeURIComponent(token)}`;
+
+    conectarWebSocket(wsUrl);
+}
+
+function conectarWebSocketInvitado(nombre) {
+    const protocolo = window.location.protocol === "https:" ? "wss" : "ws";
+
+    const wsUrl = nombre !== ""
+        ? `${protocolo}://${window.location.host}?usuario=${encodeURIComponent(nombre)}`
+        : `${protocolo}://${window.location.host}`;
+
+    conectarWebSocket(wsUrl);
+}
+
+function conectarWebSocket(wsUrl) {
+    socket = new WebSocket(wsUrl);
+
+    socket.onopen = () => {
+        connectionStatus.textContent = "🟢 Conectado";
+        connectionStatus.className = "status-dot connected";
+    };
+
+    socket.onclose = () => {
+        connectionStatus.textContent = "🔴 Desconectado";
+        connectionStatus.className = "status-dot disconnected";
+    };
+
+    socket.onerror = () => {
+        connectionStatus.textContent = "🔴 Error de conexión";
+        connectionStatus.className = "status-dot disconnected";
+    };
+
+    socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+
+        if (data.tipo === "error") {
+            chatContainer.style.display = "none";
+            loginContainer.style.display = "flex";
+            errorMsg.textContent = data.mensaje;
+            return;
+        }
+
+        if (data.tipo === "historial") {
+            messages.innerHTML = "";
+
+            data.mensajes.forEach(m => {
+                mostrarMensaje({
+                    tipo: "mensaje",
+                    usuario: m.usuario,
+                    mensaje: m.mensaje || m.texto,
+                    hora: m.hora
+                });
+            });
+
+            return;
+        }
+
+        mostrarMensaje(data);
+    };
+}
+
+function enviarMensaje() {
+    const texto = input.value.trim();
+
+    if (texto !== "" && socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(texto);
+        input.value = "";
+    }
+}
+
+guestBtn.addEventListener("click", entrarComoInvitado);
+
+nameInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+        entrarComoInvitado();
+    }
+});
+
+sendBtn.addEventListener("click", enviarMensaje);
+
+input.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
         enviarMensaje();
     }
 });
+
+logoutBtn.addEventListener("click", () => {
+    window.location.href = "/logout";
+});
+
+verificarSesionGoogle();
