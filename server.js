@@ -16,6 +16,8 @@ const db = require("./db");
 const app = express();
 const server = http.createServer(app);
 
+app.use(express.static("public"));
+
 const PUERTO = 4000;
 const SECRETO_JWT = process.env.JWT_SECRETO || "clave_secreta_chat";
 
